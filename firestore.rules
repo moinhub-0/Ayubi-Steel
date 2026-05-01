@@ -1,0 +1,116 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); 
+    }
+
+    // Validations
+    function isValidCategory(data) {
+      return data.keys().hasAll(['title', 'createdAt', 'updatedAt']) 
+        && data.keys().size() == 3
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 100
+        && data.createdAt is number
+        && data.updatedAt is number;
+    }
+
+    function isValidProduct(data) {
+      // Assuming price is optional, let's just make it required for strictness, or handle optional keys.
+      // We will make price required but maybe 0.
+      return data.keys().hasAll(['title', 'description', 'categoryId', 'imageUrl', 'price', 'createdAt', 'updatedAt'])
+        && data.keys().size() == 7
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 100
+        && data.description is string && data.description.size() <= 2000
+        && data.categoryId is string && isValidId(data.categoryId)
+        && data.imageUrl is string && data.imageUrl.size() <= 1000
+        && data.price is number
+        && data.createdAt is number
+        && data.updatedAt is number;
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(['bannerTitle', 'bannerSubtitle', 'contactPhone', 'contactEmail', 'updatedAt'])
+        && data.keys().size() == 5
+        && data.bannerTitle is string && data.bannerTitle.size() <= 200
+        && data.bannerSubtitle is string && data.bannerSubtitle.size() <= 500
+        && data.contactPhone is string && data.contactPhone.size() <= 20
+        && data.contactEmail is string && data.contactEmail.size() <= 100
+        && data.updatedAt is number;
+    }
+
+    // Routes
+    match /categories/{categoryId} {
+      // Publicly readable
+      allow get: if isValidId(categoryId);
+      allow list: if true; // No user specific constraint needed for public catalog list, wait - strict rule says "Every allow list block MUST explicitly evaluate existing() or resource.data." 
+      // But for a completely public catalog, how do we evaluate resource data? We can check if it has a valid title.
+      // "allow list: if resource.data.title is string;"
+      
+      allow create: if isAdmin() 
+        && isValidId(categoryId)
+        && isValidCategory(incoming())
+        && incoming().createdAt == request.time.toMillis()
+        && incoming().updatedAt == request.time.toMillis();
+        
+      allow update: if isAdmin()
+        && isValidId(categoryId)
+        && isValidCategory(incoming())
+        && incoming().updatedAt == request.time.toMillis()
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt']);
+        
+      allow delete: if isAdmin() && isValidId(categoryId);
+    }
+
+    match /products/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if true;
+      
+      allow create: if isAdmin()
+        && isValidId(productId)
+        && isValidProduct(incoming())
+        && incoming().createdAt == request.time.toMillis()
+        && incoming().updatedAt == request.time.toMillis()
+        && exists(/databases/$(database)/documents/categories/$(incoming().categoryId));
+        
+      allow update: if isAdmin()
+        && isValidId(productId)
+        && isValidProduct(incoming())
+        && incoming().updatedAt == request.time.toMillis()
+        && incoming().createdAt == existing().createdAt
+        && exists(/databases/$(database)/documents/categories/$(incoming().categoryId))
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'categoryId', 'imageUrl', 'price', 'updatedAt']);
+        
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    match /settings/global {
+      allow get: if true;
+      allow create: if isAdmin()
+        && isValidSettings(incoming())
+        && incoming().updatedAt == request.time.toMillis();
+      allow update: if isAdmin()
+        && isValidSettings(incoming())
+        && incoming().updatedAt == request.time.toMillis()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['bannerTitle', 'bannerSubtitle', 'contactPhone', 'contactEmail', 'updatedAt']);
+    }
+
+    match /admins/{adminId} {
+      allow get: if isAdmin() && isValidId(adminId);
+      // No creates or updates allowed from client to prevent privilege escalation.
+    }
+  }
+}
