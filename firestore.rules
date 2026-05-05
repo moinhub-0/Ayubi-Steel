@@ -15,7 +15,7 @@ service cloud.firestore {
     function existing() { return resource.data; }
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { 
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); 
+      return isSignedIn() && (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || request.auth.token.email == 'moincomp06@gmail.com'); 
     }
 
     // Validations
@@ -42,12 +42,34 @@ service cloud.firestore {
     }
 
     function isValidSettings(data) {
-      return data.keys().hasAll(['bannerTitle', 'bannerSubtitle', 'contactPhone', 'contactEmail', 'updatedAt'])
-        && data.keys().size() == 5
+      return data.keys().hasAll(['bannerTitle', 'bannerSubtitle', 'contactPhone', 'contactEmail', 'aboutTitle', 'aboutSubtitle', 'aboutFounderStory', 'homeBannerImage', 'aboutBannerImage', 'aboutFounderImage', 'updatedAt', 'address', 'instagramUrl', 'youtubeUrl'])
+        && data.keys().size() == 14
         && data.bannerTitle is string && data.bannerTitle.size() <= 200
-        && data.bannerSubtitle is string && data.bannerSubtitle.size() <= 500
-        && data.contactPhone is string && data.contactPhone.size() <= 20
+        && data.bannerSubtitle is string && data.bannerSubtitle.size() <= 600
+        && data.contactPhone is string && data.contactPhone.size() <= 30
         && data.contactEmail is string && data.contactEmail.size() <= 100
+        && data.aboutTitle is string && data.aboutTitle.size() <= 200
+        && data.aboutSubtitle is string && data.aboutSubtitle.size() <= 600
+        && data.aboutFounderStory is string && data.aboutFounderStory.size() <= 3000
+        && data.homeBannerImage is string && data.homeBannerImage.size() <= 1000
+        && data.aboutBannerImage is string && data.aboutBannerImage.size() <= 1000
+        && data.aboutFounderImage is string && data.aboutFounderImage.size() <= 1000
+        && data.address is string && data.address.size() <= 200
+        && data.instagramUrl is string && data.instagramUrl.size() <= 300
+        && data.youtubeUrl is string && data.youtubeUrl.size() <= 300
+        && data.updatedAt is number;
+    }
+
+    function isValidTestimonial(data) {
+      return (
+          (data.keys().size() == 6 && data.keys().hasAll(['name', 'role', 'text', 'status', 'createdAt', 'updatedAt'])) ||
+          (data.keys().size() == 7 && data.keys().hasAll(['name', 'role', 'text', 'image', 'status', 'createdAt', 'updatedAt']) && data.image is string && data.image.size() <= 1000)
+        )
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.role is string && data.role.size() <= 100
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 1000
+        && data.status is string && data.status.matches('^(pending|approved|rejected)$')
+        && data.createdAt is number
         && data.updatedAt is number;
     }
 
@@ -61,14 +83,11 @@ service cloud.firestore {
       
       allow create: if isAdmin() 
         && isValidId(categoryId)
-        && isValidCategory(incoming())
-        && incoming().createdAt == request.time.toMillis()
-        && incoming().updatedAt == request.time.toMillis();
+        && isValidCategory(incoming());
         
       allow update: if isAdmin()
         && isValidId(categoryId)
         && isValidCategory(incoming())
-        && incoming().updatedAt == request.time.toMillis()
         && incoming().createdAt == existing().createdAt
         && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt']);
         
@@ -82,14 +101,11 @@ service cloud.firestore {
       allow create: if isAdmin()
         && isValidId(productId)
         && isValidProduct(incoming())
-        && incoming().createdAt == request.time.toMillis()
-        && incoming().updatedAt == request.time.toMillis()
         && exists(/databases/$(database)/documents/categories/$(incoming().categoryId));
         
       allow update: if isAdmin()
         && isValidId(productId)
         && isValidProduct(incoming())
-        && incoming().updatedAt == request.time.toMillis()
         && incoming().createdAt == existing().createdAt
         && exists(/databases/$(database)/documents/categories/$(incoming().categoryId))
         && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'categoryId', 'imageUrl', 'price', 'updatedAt']);
@@ -97,19 +113,46 @@ service cloud.firestore {
       allow delete: if isAdmin() && isValidId(productId);
     }
 
+    match /testimonials/{testimonialId} {
+      allow get: if isValidId(testimonialId) && (isAdmin() || resource.data.status == 'approved');
+      allow list: if isAdmin() || resource.data.status == 'approved';
+      
+      allow create: if isValidId(testimonialId)
+        && isValidTestimonial(incoming())
+        && incoming().status == 'pending';
+        
+      allow update: if isAdmin()
+        && isValidId(testimonialId)
+        && isValidTestimonial(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+        
+      allow delete: if isAdmin() && isValidId(testimonialId);
+    }
+
     match /settings/global {
       allow get: if true;
       allow create: if isAdmin()
-        && isValidSettings(incoming())
-        && incoming().updatedAt == request.time.toMillis();
+        && isValidSettings(incoming());
       allow update: if isAdmin()
         && isValidSettings(incoming())
-        && incoming().updatedAt == request.time.toMillis()
-        && incoming().diff(existing()).affectedKeys().hasOnly(['bannerTitle', 'bannerSubtitle', 'contactPhone', 'contactEmail', 'updatedAt']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['bannerTitle', 'bannerSubtitle', 'contactPhone', 'contactEmail', 'aboutTitle', 'aboutSubtitle', 'aboutFounderStory', 'homeBannerImage', 'aboutBannerImage', 'aboutFounderImage', 'address', 'instagramUrl', 'youtubeUrl', 'updatedAt']);
+    }
+
+    match /messages/{messageId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if true
+        && incoming().keys().hasAll(['name', 'email', 'phone', 'message', 'createdAt', 'status'])
+        && incoming().name is string
+        && incoming().email is string
+        && incoming().phone is string
+        && incoming().message is string
+        && incoming().createdAt is number
+        && incoming().status is string;
     }
 
     match /admins/{adminId} {
-      allow get: if isAdmin() && isValidId(adminId);
+      allow get: if isSignedIn() && request.auth.uid == adminId && isValidId(adminId);
       // No creates or updates allowed from client to prevent privilege escalation.
     }
   }

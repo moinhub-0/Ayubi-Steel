@@ -1,7 +1,34 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter, MapPin, Phone, Mail } from 'lucide-react';
+import { Instagram, Youtube, MapPin, Phone, Mail } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 export default function Footer() {
+  const [settings, setSettings] = useState({
+    contactPhone: '+91 785390 3438',
+    contactEmail: 'info@ayubisteel.com',
+    address: 'Bhubaneswar, Odisha, India',
+    instagramUrl: '#',
+    youtubeUrl: '#'
+  });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+         const data = docSnap.data();
+         setSettings((prev) => ({ 
+           contactPhone: data.contactPhone || prev.contactPhone,
+           contactEmail: data.contactEmail || prev.contactEmail,
+           address: data.address || prev.address,
+           instagramUrl: data.instagramUrl || prev.instagramUrl,
+           youtubeUrl: data.youtubeUrl || prev.youtubeUrl
+         }));
+      }
+    });
+    return () => unsub();
+  }, []);
+
   return (
     <footer className="bg-slate-900 border-t border-slate-800 text-zinc-300 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,17 +43,13 @@ export default function Footer() {
               Crafting safety and elegance since the inception of modern architectural steel. We construct the physical and aesthetic foundation of your spaces.
             </p>
             <div className="flex space-x-4 pt-2">
-              <a href="#" className="p-2 rounded-full bg-slate-800 text-zinc-400 hover:text-white hover:bg-slate-700 transition-all duration-300">
-                <span className="sr-only">Facebook</span>
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2 rounded-full bg-slate-800 text-zinc-400 hover:text-white hover:bg-slate-700 transition-all duration-300">
+              <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-800 text-zinc-400 hover:text-white hover:bg-slate-700 transition-all duration-300">
                 <span className="sr-only">Instagram</span>
                 <Instagram className="h-4 w-4" />
               </a>
-              <a href="#" className="p-2 rounded-full bg-slate-800 text-zinc-400 hover:text-white hover:bg-slate-700 transition-all duration-300">
-                <span className="sr-only">Twitter</span>
-                <Twitter className="h-4 w-4" />
+              <a href={settings.youtubeUrl} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-800 text-zinc-400 hover:text-white hover:bg-slate-700 transition-all duration-300">
+                <span className="sr-only">Youtube</span>
+                <Youtube className="h-4 w-4" />
               </a>
             </div>
           </div>
@@ -58,15 +81,15 @@ export default function Footer() {
             <ul className="space-y-4 text-sm font-light">
               <li className="flex items-start text-zinc-400 group">
                 <MapPin className="h-5 w-5 mr-3 text-zinc-500 group-hover:text-white transition-colors shrink-0" />
-                <span className="leading-relaxed">123 Steel Lane,<br/>Industrial Area</span>
+                <span className="leading-relaxed whitespace-pre-wrap">{settings.address}</span>
               </li>
               <li className="flex items-center text-zinc-400 group">
                 <Phone className="h-5 w-5 mr-3 text-zinc-500 group-hover:text-white transition-colors shrink-0" />
-                <span>+91 785390 3438</span>
+                <span>{settings.contactPhone}</span>
               </li>
               <li className="flex items-center text-zinc-400 group">
                 <Mail className="h-5 w-5 mr-3 text-zinc-500 group-hover:text-white transition-colors shrink-0" />
-                <span>info@ayubisteel.com</span>
+                <span>{settings.contactEmail}</span>
               </li>
             </ul>
           </div>
@@ -75,7 +98,7 @@ export default function Footer() {
         <div className="mt-16 pt-8 border-t border-slate-800 text-center flex flex-col md:flex-row justify-between items-center text-xs text-zinc-500">
           <p>&copy; {new Date().getFullYear()} <span className="text-white">Ayubi Steel</span>. All rights reserved.</p>
           <p className="mt-4 md:mt-0 tracking-widest uppercase text-zinc-400">
-            Developed by <Link to="/developer" className="text-white font-medium hover:underline hover:text-zinc-300 transition-colors">Moinuddin Hasan</Link>
+            Developed by <a href="https://the-rm-souq.moincomp06.workers.dev/developer" target="_blank" rel="noopener noreferrer" className="text-white font-medium hover:underline hover:text-zinc-300 transition-colors">Moinuddin Hasan</a>
           </p>
         </div>
       </div>

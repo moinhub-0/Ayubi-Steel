@@ -3,15 +3,17 @@ import { Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { auth } from '../../lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const location = useLocation();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
+      setUser(user);
       // Check if logged in user is the owner
       if (user && user.email === 'moincomp06@gmail.com') {
         setIsAdminUser(true);
@@ -21,6 +23,24 @@ export default function Navbar() {
     });
     return () => unsub();
   }, []);
+
+  const handleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const { scrollY } = useScroll();
 
@@ -64,20 +84,36 @@ export default function Navbar() {
             </Link>
           </div>
           <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-8">
+            <div className="ml-10 flex items-center space-x-8">
               {links.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
                   className={`${
                     location.pathname === link.href
-                      ? 'text-white'
-                      : 'text-zinc-400 hover:text-white'
-                  } px-3 py-2 rounded-md text-sm font-medium transition-colors`}
+                      ? 'text-white bg-white/10'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                  } px-4 py-2 rounded-full text-sm font-medium transition-colors`}
                 >
                   {link.label}
                 </Link>
               ))}
+              
+              {user ? (
+                <button
+                  onClick={handleLogout}
+                  className="text-zinc-400 hover:text-white hover:bg-white/5 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+                >
+                  Sign Out
+                </button>
+              ) : (
+                <button
+                  onClick={handleLogin}
+                  className="bg-white text-slate-900 hover:bg-zinc-200 px-5 py-2 rounded-full text-sm font-medium transition-colors"
+                >
+                  Sign In
+                </button>
+              )}
             </div>
           </div>
           <div className="-mr-2 flex md:hidden">
@@ -103,13 +139,28 @@ export default function Navbar() {
                 onClick={() => setIsOpen(false)}
                 className={`${
                   location.pathname === link.href
-                    ? 'text-white bg-zinc-800'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-                } block px-3 py-2 rounded-md text-base font-medium`}
+                    ? 'text-white bg-white/10'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                } block px-4 py-2 rounded-xl text-base font-medium`}
               >
                 {link.label}
               </Link>
             ))}
+            {user ? (
+              <button
+                onClick={() => { handleLogout(); setIsOpen(false); }}
+                className="text-zinc-400 hover:text-white hover:bg-white/5 block w-full text-left px-4 py-2 rounded-xl text-base font-medium"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={() => { handleLogin(); setIsOpen(false); }}
+                className="text-slate-900 bg-white hover:bg-zinc-200 block w-full text-left px-4 py-2 mt-2 rounded-xl text-base font-medium"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       )}

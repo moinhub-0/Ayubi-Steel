@@ -60,7 +60,7 @@ export default function Products() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
           </div>
         ) : products.length === 0 ? (
-          <div className="text-center py-20 bg-white border border-zinc-200 rounded-sm">
+          <div className="text-center py-20 bg-white border border-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl">
             <p className="text-zinc-500 font-light">No products available at the moment.</p>
           </div>
         ) : (

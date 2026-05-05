@@ -39,10 +39,10 @@ export default function ProductCard({ product, categoryTitle, index }: ProductCa
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: "-50px" }}
-      className="group relative bg-white border border-zinc-200 overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-500 rounded-sm"
+      className="group relative bg-white border border-zinc-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 rounded-3xl"
     >
       {/* Image Container */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100 cursor-pointer">
+      <div className="relative aspect-[4/3] overflow-hidden bg-zinc-50 cursor-pointer">
         <motion.img 
           src={product.imageUrl} 
           alt={product.title} 
@@ -76,7 +76,7 @@ export default function ProductCard({ product, categoryTitle, index }: ProductCa
             </h3>
           </div>
           {product.price && product.price > 0 && (
-            <span className="text-sm font-mono text-zinc-400 border border-zinc-200 px-2 py-1 rounded shrink-0">
+            <span className="text-sm font-mono text-zinc-400 border border-zinc-100 px-3 py-1 rounded-full shrink-0">
               ${product.price}
             </span>
           )}

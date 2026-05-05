@@ -1,7 +1,34 @@
 import { motion } from 'motion/react';
 import { Award, Shield, Compass } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 export default function About() {
+  const [settings, setSettings] = useState({
+    aboutTitle: 'Craftsmanship meets durability.',
+    aboutSubtitle: 'With over two decades of experience, Ayubi Steel has established itself as the premier choice for custom metalwork.',
+    aboutFounderStory: 'Founded with a vision to bring industrial strength into modern design, we take pride in every weld and cut.',
+    aboutBannerImage: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&q=80',
+    aboutFounderImage: 'https://images.unsplash.com/photo-1542456434-6c39f1cdeccb?auto=format&fit=crop&q=80'
+  });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+         const data = docSnap.data();
+         setSettings((prev) => ({ 
+           aboutTitle: data.aboutTitle || prev.aboutTitle,
+           aboutSubtitle: data.aboutSubtitle || prev.aboutSubtitle,
+           aboutFounderStory: data.aboutFounderStory || prev.aboutFounderStory,
+           aboutBannerImage: data.aboutBannerImage || prev.aboutBannerImage,
+           aboutFounderImage: data.aboutFounderImage || prev.aboutFounderImage
+         }));
+      }
+    }, error => handleFirestoreError(error, OperationType.GET, 'settings/global'));
+    return () => unsub();
+  }, []);
+
   const fadeInUp = {
     hidden: { opacity: 0, y: 40 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } }
@@ -12,7 +39,7 @@ export default function About() {
       {/* Hero Section */}
       <section className="relative py-32 bg-slate-900 overflow-hidden">
         <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&q=80')] bg-cover bg-center mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-cover bg-center mix-blend-overlay" style={{ backgroundImage: `url('${settings.aboutBannerImage}')` }}></div>
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900"></div>
         </div>
         
@@ -23,7 +50,9 @@ export default function About() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-4xl md:text-7xl font-bold tracking-tight text-white mb-6 uppercase"
           >
-            The Vision Behind the <span className="text-zinc-400 font-serif italic">Steel</span>
+            {settings.aboutTitle.split(' ').map((word, i, arr) => (
+               <span key={i} className={i >= arr.length - 1 ? "text-zinc-400 font-serif italic pr-2" : "pr-2"}>{word}</span>
+            ))}
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -31,7 +60,7 @@ export default function About() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="max-w-2xl mx-auto text-xl text-zinc-400 font-light leading-relaxed"
           >
-            We don’t just manufacture railings and windows; we engineer the safety, beauty, and structural integrity of your home.
+            {settings.aboutSubtitle}
           </motion.p>
         </div>
       </section>
@@ -47,10 +76,10 @@ export default function About() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="relative aspect-[4/5] bg-zinc-200 rounded-sm overflow-hidden shadow-2xl group"
+              className="relative aspect-[4/5] bg-zinc-200 rounded-3xl overflow-hidden shadow-2xl group"
             >
                <img 
-                 src="https://images.unsplash.com/photo-1542456434-6c39f1cdeccb?auto=format&fit=crop&q=80" 
+                 src={settings.aboutFounderImage} 
                  alt="Welding craftsmanship" 
                  className="absolute inset-0 w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-1000 scale-105 group-hover:scale-100"
                />
@@ -75,17 +104,14 @@ export default function About() {
                 <div className="h-1 w-20 bg-slate-900 mt-6"></div>
               </motion.div>
               
-              <motion.div variants={fadeInUp} className="prose prose-zinc prose-lg text-zinc-600 font-light leading-relaxed">
+              <motion.div variants={fadeInUp} className="prose prose-zinc prose-lg text-zinc-600 font-light leading-relaxed whitespace-pre-line">
                 <p>
-                  Founded by <strong className="text-slate-900 font-medium">Azhar Ayubi</strong>, Ayubi Steel was born out of a passion for turning raw metal into architectural art. With years of expertise in both Stainless Steel and Premium Aluminium, Azhar has led the company with a simple but profound philosophy.
-                </p>
-                <p>
-                  From the intricate curves of our custom dining tables to the sleek, silent glide of our aluminium windows, every piece is a testament to durability. Our team of skilled artisans and modern engineers work hand-in-hand to ensure exact precision in every cut, weld, and polish.
+                  {settings.aboutFounderStory}
                 </p>
               </motion.div>
 
               <motion.div variants={fadeInUp} className="pt-8 border-t border-zinc-200">
-                <blockquote className="text-xl italic text-slate-800 font-serif border-l-4 border-zinc-300 pl-6 my-6 bg-zinc-50 py-4 pr-4 rounded-r relative shadow-sm">
+                <blockquote className="text-xl italic text-slate-800 font-serif border-l-4 border-zinc-300 pl-6 my-6 bg-zinc-50 py-4 pr-4 rounded-r-2xl relative shadow-sm">
                   <span className="absolute top-0 left-2 text-4xl text-zinc-300">"</span>
                   Architecture begins where engineering ends. At Ayubi Steel, we engineer for strength, and design for the soul.
                   <footer className="block mt-4 text-sm font-sans font-semibold text-zinc-500 uppercase tracking-widest not-italic">
@@ -118,7 +144,7 @@ export default function About() {
                  whileInView={{ opacity: 1, y: 0 }}
                  viewport={{ once: true }}
                  transition={{ delay: i * 0.2, duration: 0.6 }}
-                 className="text-center p-8 bg-zinc-50 border border-zinc-100 hover:shadow-lg transition-shadow duration-300 rounded-sm"
+                 className="text-center p-8 bg-zinc-50 border border-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 rounded-3xl"
                >
                  <div className="inline-flex items-center justify-center p-4 bg-white rounded-full shadow-sm mb-6 border border-zinc-100">
                    {val.icon}
