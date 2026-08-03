@@ -144,9 +144,9 @@ export default function About() {
                  whileInView={{ opacity: 1, y: 0 }}
                  viewport={{ once: true }}
                  transition={{ delay: i * 0.2, duration: 0.6 }}
-                 className="text-center p-8 bg-zinc-50 border border-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 rounded-3xl"
+                 className="text-center p-8 bg-zinc-50 border border-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 rounded-[2.5rem]"
                >
-                 <div className="inline-flex items-center justify-center p-4 bg-white rounded-full shadow-sm mb-6 border border-zinc-100">
+                 <div className="inline-flex items-center justify-center p-5 bg-white rounded-full shadow-sm mb-6 border border-zinc-100 aspect-square">
                    {val.icon}
                  </div>
                  <h3 className="text-xl font-bold text-slate-900 mb-3">{val.title}</h3>

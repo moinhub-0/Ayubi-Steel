@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Quote, X, MessageSquareHeart } from 'lucide-react';
@@ -116,7 +117,7 @@ export default function TestimonialsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ delay: i * 0.15, duration: 0.6, ease: "easeOut" }}
-              className="bg-zinc-50 rounded-3xl p-8 relative shadow-sm border border-zinc-100 flex flex-col"
+              className="bg-zinc-50 rounded-[2.5rem] p-8 relative shadow-sm border border-zinc-100 flex flex-col"
             >
               <Quote className="h-10 w-10 text-slate-200 absolute top-8 left-8" />
               <div className="relative z-10 pt-8 flex-1 flex flex-col">

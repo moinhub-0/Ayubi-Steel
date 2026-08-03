@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { ArrowRight, MessageCircle } from 'lucide-react';
 
 export interface ProductCardProps {
+  key?: string | number;
   product: {
     id: string;
     title: string;
@@ -12,6 +13,7 @@ export interface ProductCardProps {
   };
   categoryTitle?: string;
   index: number;
+  onClick?: () => void;
 }
 
 const itemVariants = {
@@ -27,7 +29,7 @@ const itemVariants = {
   })
 };
 
-export default function ProductCard({ product, categoryTitle, index }: ProductCardProps) {
+export default function ProductCard({ product, categoryTitle, index, onClick }: ProductCardProps) {
   const phoneNumber = "917853903438";
   const waMsg = `Hi, I am interested in the ${product.title}. Could you provide more details?`;
   const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(waMsg)}`;
@@ -39,10 +41,11 @@ export default function ProductCard({ product, categoryTitle, index }: ProductCa
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: "-50px" }}
-      className="group relative bg-white border border-zinc-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 rounded-3xl"
+      className={`group relative bg-white border border-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 rounded-[2.5rem] p-3 flex flex-col ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={onClick}
     >
       {/* Image Container */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-zinc-50 cursor-pointer">
+      <div className="relative aspect-[4/3] overflow-hidden bg-zinc-50 cursor-pointer rounded-[2rem]">
         <motion.img 
           src={product.imageUrl} 
           alt={product.title} 
@@ -56,7 +59,8 @@ export default function ProductCard({ product, categoryTitle, index }: ProductCa
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-[#25D366] text-white px-4 py-2 rounded-full font-medium text-sm flex items-center shadow-lg hover:bg-[#20bd5a] transition-colors"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#25D366] text-white px-6 py-2.5 rounded-full font-medium text-sm flex items-center shadow-lg hover:bg-[#20bd5a] transition-colors"
           >
             <MessageCircle className="h-4 w-4 mr-2" />
             Enquire
@@ -65,7 +69,7 @@ export default function ProductCard({ product, categoryTitle, index }: ProductCa
       </div>
 
       {/* Content */}
-      <div className="p-6 relative">
+      <div className="p-6 relative flex flex-col flex-grow">
         <div className="flex justify-between items-start mb-2">
           <div>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1">
@@ -88,10 +92,10 @@ export default function ProductCard({ product, categoryTitle, index }: ProductCa
         
         <div className="w-full h-[1px] bg-zinc-100 mb-4"></div>
         
-        <a href={waUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm font-semibold text-slate-900 hover:text-zinc-600 transition-colors uppercase tracking-widest group/link">
+        <div className="inline-flex items-center text-sm font-semibold text-slate-900 hover:text-zinc-600 transition-colors uppercase tracking-widest group/link">
           View Details
           <ArrowRight className="ml-2 h-4 w-4 transform group-hover/link:translate-x-1 transition-transform" />
-        </a>
+        </div>
       </div>
     </motion.div>
   );

@@ -32,10 +32,10 @@ service cloud.firestore {
       // We will make price required but maybe 0.
       return data.keys().hasAll(['title', 'description', 'categoryId', 'imageUrl', 'price', 'createdAt', 'updatedAt'])
         && data.keys().size() == 7
-        && data.title is string && data.title.size() > 0 && data.title.size() <= 100
-        && data.description is string && data.description.size() <= 2000
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 10000
         && data.categoryId is string && isValidId(data.categoryId)
-        && data.imageUrl is string && data.imageUrl.size() <= 1000
+        && data.imageUrl is string && data.imageUrl.size() <= 1000000
         && data.price is number
         && data.createdAt is number
         && data.updatedAt is number;
@@ -51,9 +51,9 @@ service cloud.firestore {
         && data.aboutTitle is string && data.aboutTitle.size() <= 200
         && data.aboutSubtitle is string && data.aboutSubtitle.size() <= 600
         && data.aboutFounderStory is string && data.aboutFounderStory.size() <= 3000
-        && data.homeBannerImage is string && data.homeBannerImage.size() <= 1000
-        && data.aboutBannerImage is string && data.aboutBannerImage.size() <= 1000
-        && data.aboutFounderImage is string && data.aboutFounderImage.size() <= 1000
+        && data.homeBannerImage is string && data.homeBannerImage.size() <= 1000000
+        && data.aboutBannerImage is string && data.aboutBannerImage.size() <= 1000000
+        && data.aboutFounderImage is string && data.aboutFounderImage.size() <= 1000000
         && data.address is string && data.address.size() <= 200
         && data.instagramUrl is string && data.instagramUrl.size() <= 300
         && data.youtubeUrl is string && data.youtubeUrl.size() <= 300
@@ -63,7 +63,7 @@ service cloud.firestore {
     function isValidTestimonial(data) {
       return (
           (data.keys().size() == 6 && data.keys().hasAll(['name', 'role', 'text', 'status', 'createdAt', 'updatedAt'])) ||
-          (data.keys().size() == 7 && data.keys().hasAll(['name', 'role', 'text', 'image', 'status', 'createdAt', 'updatedAt']) && data.image is string && data.image.size() <= 1000)
+          (data.keys().size() == 7 && data.keys().hasAll(['name', 'role', 'text', 'image', 'status', 'createdAt', 'updatedAt']) && data.image is string && data.image.size() <= 1000000)
         )
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.role is string && data.role.size() <= 100

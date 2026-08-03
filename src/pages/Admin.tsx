@@ -1,10 +1,11 @@
+import React from "react";
 import { useState, useEffect } from 'react';
 import { Settings, Image as ImageIcon, LayoutList, LogOut, Plus, Trash2, Edit2, Loader2, LayoutDashboard, MessageSquare, CheckCircle } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType, storage } from '../lib/firebase';
 import { collection, doc, onSnapshot, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
+import imageCompression from 'browser-image-compression';
 interface Category {
   id: string;
   title: string;
@@ -53,6 +54,22 @@ interface Testimonial {
   updatedAt: number;
 }
 
+const safeConfirm = (msg: string) => {
+  try {
+    return window.confirm(msg);
+  } catch (e) {
+    return true;
+  }
+};
+
+const safeAlert = (msg: string) => {
+  try {
+    window.alert(msg);
+  } catch (e) {
+    console.error('Alert:', msg);
+  }
+};
+
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -87,10 +104,26 @@ export default function Admin() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Show instant local preview
+    const tempUrl = URL.createObjectURL(file);
+    if (isSetting) {
+      setSettings(prev => ({ ...prev, [fieldName]: tempUrl }));
+    } else {
+      setIsEditingProduct(prev => prev ? { ...prev, imageUrl: tempUrl } : null);
+    }
+
     setUploadingImage(true);
     try {
-      const storageRef = ref(storage, `images/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
+      const options = {
+        maxSizeMB: 0.8,
+        maxWidthOrHeight: 1920,
+        useWebWorker: false, // Disabled due to iframe constraints
+      };
+      const compressedFile = await imageCompression(file, options);
+      const fileName = compressedFile.name || file.name || 'image.jpg';
+      
+      const storageRef = ref(storage, `images/${Date.now()}_${fileName}`);
+      await uploadBytes(storageRef, compressedFile);
       const url = await getDownloadURL(storageRef);
       
       if (isSetting) {
@@ -100,7 +133,13 @@ export default function Admin() {
       }
     } catch (error) {
       console.error("Error uploading image: ", error);
-      alert("Failed to upload image. Please try again.");
+      safeAlert("Failed to upload image. Please try again.");
+      // Revert preview on failure
+      if (isSetting) {
+        setSettings(prev => ({ ...prev, [fieldName]: '' }));
+      } else {
+        setIsEditingProduct(prev => prev ? { ...prev, imageUrl: '' } : null);
+      }
     } finally {
       setUploadingImage(false);
     }
@@ -209,7 +248,7 @@ export default function Admin() {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+    if (!safeConfirm('Are you sure you want to delete this category?')) return;
     try {
       await deleteDoc(doc(db, 'categories', id));
     } catch (error) {
@@ -227,14 +266,14 @@ export default function Admin() {
     const priceStr = formData.get('price') as string;
     
     if (!title || !description || !categoryId) {
-      alert("Please fill out all required fields (Title, Category, Description).");
+      safeAlert("Please fill out all required fields (Title, Category, Description).");
       return;
     }
 
     const isEditing = Boolean(isEditingProduct?.id);
     
     if (!imageUrl && !isEditing) {
-      alert("Please select and upload an image for the product.");
+      safeAlert("Please select and upload an image for the product.");
       return;
     }
 
@@ -246,7 +285,7 @@ export default function Admin() {
       description,
       categoryId,
       imageUrl,
-      price: priceStr ? parseFloat(priceStr) : 0,
+      price: priceStr && !isNaN(parseFloat(priceStr)) ? parseFloat(priceStr) : 0,
       updatedAt: now,
     };
 
@@ -266,7 +305,7 @@ export default function Admin() {
   };
 
   const deleteProduct = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!safeConfirm('Are you sure you want to delete this product?')) return;
     try {
       await deleteDoc(doc(db, 'products', id));
     } catch (error) {
@@ -283,7 +322,7 @@ export default function Admin() {
   };
 
   const deleteMessage = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this message?')) return;
+    if (!safeConfirm('Are you sure you want to delete this message?')) return;
     try {
       await deleteDoc(doc(db, 'messages', id));
     } catch (error) {
@@ -300,7 +339,7 @@ export default function Admin() {
   };
 
   const deleteTestimonial = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this testimonial?')) return;
+    if (!safeConfirm('Are you sure you want to delete this testimonial?')) return;
     try {
       await deleteDoc(doc(db, 'testimonials', id));
     } catch (error) {
@@ -326,7 +365,7 @@ export default function Admin() {
         updatedAt: Date.now()
       };
       await setDoc(doc(db, 'settings', 'global'), dataToSave, { merge: true });
-      alert('Settings saved successfully!');
+      safeAlert('Settings saved successfully!');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
     }
@@ -365,35 +404,35 @@ export default function Admin() {
   return (
     <div className="min-h-screen flex bg-zinc-50 pt-16">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-zinc-300 flex flex-col shrink-0">
+      <aside className="w-64 bg-slate-900 text-zinc-300 flex flex-col shrink-0 rounded-r-[2.5rem] shadow-2xl z-10 my-4 md:my-8 ml-4 md:ml-8 overflow-hidden">
         <div className="p-6 border-b border-slate-800">
            <h2 className="text-xl font-bold text-white uppercase tracking-widest shrink-0">Dashboard</h2>
         </div>
         <nav className="flex-1 px-4 space-y-2 mt-8">
           <button 
             onClick={() => { setActiveTab('dashboard'); setIsEditingCategory(null); setIsEditingProduct(null); }}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${activeTab === 'dashboard' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-medium shadow-sm' : 'hover:bg-white/5 hover:text-white'}`}
           >
             <LayoutDashboard className="h-5 w-5" />
             <span>Analytics</span>
           </button>
           <button 
             onClick={() => { setActiveTab('categories'); setIsEditingCategory(null); setIsEditingProduct(null); }}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${activeTab === 'categories' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all ${activeTab === 'categories' ? 'bg-white/10 text-white font-medium shadow-sm' : 'hover:bg-white/5 hover:text-white'}`}
           >
             <LayoutList className="h-5 w-5" />
             <span>Categories</span>
           </button>
           <button 
             onClick={() => { setActiveTab('products'); setIsEditingCategory(null); setIsEditingProduct(null); }}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${activeTab === 'products' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all ${activeTab === 'products' ? 'bg-white/10 text-white font-medium shadow-sm' : 'hover:bg-white/5 hover:text-white'}`}
           >
             <ImageIcon className="h-5 w-5" />
             <span>Manage Products</span>
           </button>
           <button 
             onClick={() => { setActiveTab('messages'); setIsEditingCategory(null); setIsEditingProduct(null); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-md transition-colors ${activeTab === 'messages' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all ${activeTab === 'messages' ? 'bg-white/10 text-white font-medium shadow-sm' : 'hover:bg-white/5 hover:text-white'}`}
           >
             <div className="flex items-center space-x-3">
               <MessageSquare className="h-5 w-5" />
@@ -405,27 +444,27 @@ export default function Admin() {
           </button>
           <button 
             onClick={() => { setActiveTab('testimonials'); setIsEditingCategory(null); setIsEditingProduct(null); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-md transition-colors ${activeTab === 'testimonials' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all ${activeTab === 'testimonials' ? 'bg-white/10 text-white font-medium shadow-sm' : 'hover:bg-white/5 hover:text-white'}`}
           >
             <div className="flex items-center space-x-3">
               <MessageSquare className="h-5 w-5" />
               <span>Testimonials</span>
             </div>
             {testimonials.filter(t => t.status === 'pending').length > 0 && (
-              <span className="bg-slate-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{testimonials.filter(t => t.status === 'pending').length}</span>
+              <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full">{testimonials.filter(t => t.status === 'pending').length}</span>
             )}
           </button>
           <button 
             onClick={() => { setActiveTab('settings'); setIsEditingCategory(null); setIsEditingProduct(null); }}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${activeTab === 'settings' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all ${activeTab === 'settings' ? 'bg-white/10 text-white font-medium shadow-sm' : 'hover:bg-white/5 hover:text-white'}`}
           >
             <Settings className="h-5 w-5" />
             <span>Business Details</span>
           </button>
         </nav>
-        <div className="p-4 border-t border-slate-800">
-          <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-4 py-3 rounded-md hover:bg-slate-800 hover:text-white transition-colors">
-            <LogOut className="h-5 w-5" />
+        <div className="p-6 border-t border-slate-800">
+          <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all hover:bg-white/5 hover:text-white group">
+            <LogOut className="h-5 w-5 text-zinc-400 group-hover:text-white transition-colors" />
             <span>Logout</span>
           </button>
         </div>
@@ -467,19 +506,19 @@ export default function Admin() {
             </div>
 
             {isEditingCategory && (
-              <form onSubmit={saveCategory} className="bg-white p-6 border border-zinc-100 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl">
-                <h3 className="text-lg font-bold mb-4">{isEditingCategory.id ? 'Edit Category' : 'New Category'}</h3>
+              <form onSubmit={saveCategory} className="bg-white p-8 border border-zinc-100 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl">
+                <h3 className="text-xl font-bold mb-6 text-slate-900">{isEditingCategory.id ? 'Edit Category' : 'New Category'}</h3>
                 <input 
                   type="text" 
                   name="title" 
                   defaultValue={isEditingCategory.title} 
                   placeholder="Category Title" 
-                  className="w-full border border-zinc-300 p-2 mb-4 focus:ring-slate-900 focus:border-slate-900"
+                  className="w-full border border-zinc-200 rounded-xl p-3 mb-6 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
                   required 
                 />
-                <div className="flex space-x-2">
-                  <button type="submit" className="bg-slate-900 text-white px-5 py-2 text-sm rounded-full">Save</button>
-                  <button type="button" onClick={() => setIsEditingCategory(null)} className="bg-zinc-100 hover:bg-zinc-200 transition-colors text-zinc-800 px-5 py-2 text-sm rounded-full">Cancel</button>
+                <div className="flex space-x-3">
+                  <button type="submit" className="bg-slate-900 text-white px-6 py-2.5 text-sm font-medium tracking-wide rounded-full hover:bg-slate-800 transition-colors">Save</button>
+                  <button type="button" onClick={() => setIsEditingCategory(null)} className="bg-zinc-100 hover:bg-zinc-200 transition-colors text-zinc-800 px-6 py-2.5 text-sm font-medium tracking-wide rounded-full">Cancel</button>
                 </div>
               </form>
             )}
@@ -525,42 +564,44 @@ export default function Admin() {
             </div>
 
             {isEditingProduct && (
-              <form onSubmit={saveProduct} className="bg-white p-6 border border-zinc-100 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl">
-                <h3 className="text-lg font-bold mb-4">{isEditingProduct.id ? 'Edit Product' : 'New Product'}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <form onSubmit={saveProduct} className="bg-white p-8 border border-zinc-100 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl">
+                <h3 className="text-xl font-bold mb-6 text-slate-900">{isEditingProduct.id ? 'Edit Product' : 'New Product'}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
                   <div>
-                    <label className="block text-xs text-zinc-500 mb-1">Title</label>
-                    <input type="text" name="title" defaultValue={isEditingProduct.title} className="w-full border border-zinc-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" required />
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Title</label>
+                    <input type="text" name="title" defaultValue={isEditingProduct.title} className="w-full border border-zinc-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" required />
                   </div>
                   <div>
-                    <label className="block text-xs text-zinc-500 mb-1">Category</label>
-                    <select name="categoryId" defaultValue={isEditingProduct.categoryId} className="w-full border border-zinc-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" required>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Category</label>
+                    <select name="categoryId" defaultValue={isEditingProduct.categoryId} className="w-full border border-zinc-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all bg-white" required>
                       <option value="">Select a category</option>
                       {categories.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs text-zinc-500 mb-1">Image {uploadingImage && '(Uploading...)'}</label>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Image {uploadingImage && '(Uploading...)'}</label>
                     {isEditingProduct.imageUrl && (
-                      <div className="mb-2">
-                        <img src={isEditingProduct.imageUrl} alt="Preview" className="h-32 object-cover rounded-xl border border-zinc-200" />
+                      <div className="mb-3">
+                        <img src={isEditingProduct.imageUrl} alt="Preview" className="h-40 object-cover rounded-2xl border border-zinc-200 shadow-sm" />
                       </div>
                     )}
-                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'imageUrl', false)} className="w-full border border-zinc-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" />
+                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'imageUrl', false)} className="w-full border border-zinc-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all bg-zinc-50 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800" />
                     <input type="hidden" name="imageUrl" value={isEditingProduct.imageUrl} />
                   </div>
                   <div>
-                    <label className="block text-xs text-zinc-500 mb-1">Price (Optional)</label>
-                    <input type="number" name="price" defaultValue={isEditingProduct.price} className="w-full border border-zinc-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" />
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Price (Optional)</label>
+                    <input type="number" name="price" defaultValue={isEditingProduct.price} className="w-full border border-zinc-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs text-zinc-500 mb-1">Description</label>
-                    <textarea name="description" defaultValue={isEditingProduct.description} rows={3} className="w-full border border-zinc-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" required></textarea>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Description</label>
+                    <textarea name="description" defaultValue={isEditingProduct.description} rows={4} className="w-full border border-zinc-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" required></textarea>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button type="submit" className="bg-slate-900 text-white px-5 py-2 text-sm rounded-full">Save</button>
-                  <button type="button" onClick={() => setIsEditingProduct(null)} className="bg-zinc-100 hover:bg-zinc-200 transition-colors text-zinc-800 px-5 py-2 text-sm rounded-full">Cancel</button>
+                <div className="flex space-x-3">
+                  <button type="submit" disabled={uploadingImage} className="bg-slate-900 text-white px-6 py-2.5 text-sm font-medium tracking-wide rounded-full hover:bg-slate-800 transition-colors disabled:opacity-50">
+                    {uploadingImage ? 'Uploading...' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => setIsEditingProduct(null)} className="bg-zinc-100 hover:bg-zinc-200 transition-colors text-zinc-800 px-6 py-2.5 text-sm font-medium tracking-wide rounded-full">Cancel</button>
                 </div>
               </form>
             )}

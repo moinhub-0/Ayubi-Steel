@@ -71,16 +71,21 @@ export default function Navbar() {
     links.push({ href: '/admin', label: 'Admin' });
   }
 
+  const isHome = location.pathname === '/';
+
   return (
     <motion.nav 
-      style={{ backgroundColor: headerBg, borderBottomColor: headerBorder, backdropFilter: headerBackdropBlur, WebkitBackdropFilter: headerBackdropBlur }}
-      className="fixed top-0 inset-x-0 z-50 border-b border-transparent transition-colors duration-300"
+      style={isHome ? { backgroundColor: headerBg, borderBottomColor: headerBorder, backdropFilter: headerBackdropBlur, WebkitBackdropFilter: headerBackdropBlur } : {}}
+      className={`fixed top-0 inset-x-0 z-50 border-b transition-colors duration-300 ${isHome ? 'border-transparent' : 'bg-slate-900/95 border-slate-800 backdrop-blur-md'}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="text-white font-bold text-xl tracking-wide uppercase">
-              Ayubi <span className="text-zinc-400 font-light">Steel</span>
+            <Link to="/" onClick={() => setIsOpen(false)} className="flex items-center space-x-2 group">
+              <div className="bg-white text-slate-900 font-black text-xl px-3 py-1 rounded-lg tracking-wider uppercase shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_20px_rgba(255,255,255,0.5)] transition-shadow duration-300">
+                Ayubi
+              </div>
+              <span className="text-white font-medium text-xl tracking-wide uppercase drop-shadow-md">Steel</span>
             </Link>
           </div>
           <div className="hidden md:block">
