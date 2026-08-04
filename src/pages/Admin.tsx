@@ -362,6 +362,9 @@ export default function Admin() {
         homeBannerImage: formData.get('homeBannerImage') as string || '',
         aboutBannerImage: formData.get('aboutBannerImage') as string || '',
         aboutFounderImage: formData.get('aboutFounderImage') as string || '',
+        address: formData.get('address') as string || '',
+        instagramUrl: formData.get('instagramUrl') as string || '',
+        youtubeUrl: formData.get('youtubeUrl') as string || '',
         updatedAt: Date.now()
       };
       await setDoc(doc(db, 'settings', 'global'), dataToSave, { merge: true });

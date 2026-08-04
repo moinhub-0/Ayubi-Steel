@@ -74,6 +74,10 @@ service cloud.firestore {
     }
 
     // Routes
+    match /test/connection {
+      allow read: if true;
+    }
+    
     match /categories/{categoryId} {
       // Publicly readable
       allow get: if isValidId(categoryId);
